@@ -2,8 +2,14 @@
 set -e
 set -o pipefail
 
+MASTER_BRANCH="master"
+
 if [[ ! -z "$TOKEN" ]]; then
 	GITHUB_TOKEN=$TOKEN
+fi
+
+if [[ ! -z "$BRANCH" ]]; then
+	MASTER_BRANCH=$BRANCH
 fi
 
 if [[ -z "$GITHUB_TOKEN" ]]; then
@@ -24,10 +30,11 @@ AUTH_HEADER="Authorization: token ${GITHUB_TOKEN}"
 main(){
 	action=$(jq --raw-output .action "$GITHUB_EVENT_PATH")
 	merged=$(jq --raw-output .pull_request.merged "$GITHUB_EVENT_PATH")
+	target_branch=$(jq --raw-output .pull_request.base.ref "$GITHUB_EVENT_PATH")
 
 	echo "DEBUG -> action: $action merged: $merged"
 
-	if [[ "$action" == "closed" ]] && [[ "$merged" == "true" ]]; then
+	if [[ "$action" == "closed" ]] && [[ "$merged" == "true" ]] && [[ "$target_branch" == "$MASTER_BRANCH" ]]; then
 		# delete the branch.
 		ref=$(jq --raw-output .pull_request.head.ref "$GITHUB_EVENT_PATH")
 		owner=$(jq --raw-output .pull_request.head.repo.owner.login "$GITHUB_EVENT_PATH")
