@@ -27,8 +27,13 @@ workflow "on pull request merge, delete the branch" {
 action "branch cleanup" {
   uses = "jessfraz/branch-cleanup-action@master"
   secrets = ["GITHUB_TOKEN"]
+  env = {
+    BRANCH = "master"
+  }
 }
 ```
+
+`BRANCH` environment is for specifying which master branch you used. (for example when deploying to staging it will not deleted)
 
 ![demo](demo.png)
 
