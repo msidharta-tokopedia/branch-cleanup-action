@@ -2,16 +2,6 @@
 set -e
 set -o pipefail
 
-MASTER_BRANCH="master"
-
-if [[ ! -z "$TOKEN" ]]; then
-	GITHUB_TOKEN=$TOKEN
-fi
-
-if [[ ! -z "$BRANCH" ]]; then
-	MASTER_BRANCH=$BRANCH
-fi
-
 if [[ -z "$GITHUB_TOKEN" ]]; then
 	echo "Set the GITHUB_TOKEN env variable."
 	exit 1
@@ -30,11 +20,11 @@ AUTH_HEADER="Authorization: token ${GITHUB_TOKEN}"
 main(){
 	action=$(jq --raw-output .action "$GITHUB_EVENT_PATH")
 	merged=$(jq --raw-output .pull_request.merged "$GITHUB_EVENT_PATH")
-	target_branch=$(jq --raw-output .pull_request.base.ref "$GITHUB_EVENT_PATH")
+	#target_branch=$(jq --raw-output .pull_request.base.ref "$GITHUB_EVENT_PATH")
 
 	echo "DEBUG -> action: $action merged: $merged"
 
-	if [[ "$action" == "closed" ]] && [[ "$merged" == "true" ]] && [[ "$target_branch" == "$MASTER_BRANCH" ]]; then
+	if [[ "$action" == "closed" ]] && [[ "$merged" == "true" ]]; then
 		# delete the branch.
 		ref=$(jq --raw-output .pull_request.head.ref "$GITHUB_EVENT_PATH")
 		owner=$(jq --raw-output .pull_request.head.repo.owner.login "$GITHUB_EVENT_PATH")
@@ -52,13 +42,17 @@ main(){
 			exit 0
 		fi
 
-		echo "Deleting branch ref $ref for owner ${owner}/${repo}..."
-		curl -XDELETE -sSL \
-			-H "${AUTH_HEADER}" \
-			-H "${API_HEADER}" \
-			"${URI}/repos/${owner}/${repo}/git/refs/heads/${ref}"
+		branch_prefix=${ref:0:3}
+		if [[ $branch_prefix == "mc_" ]]; then
+			echo "Deleting merge conflict branch ref $ref for owner ${owner}/${repo}..."
 
-		echo "Branch delete success!"
+			curl -XDELETE -sSL \
+				-H "${AUTH_HEADER}" \
+				-H "${API_HEADER}" \
+				"${URI}/repos/${owner}/${repo}/git/refs/heads/${ref}"
+
+			echo "Branch delete success!"
+		fi
 	fi
 }
 
